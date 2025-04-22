@@ -3,10 +3,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons
 
 // Updated TabBarIcon to use Ionicons
-function TabBarIcon(props: { 
-    name: React.ComponentProps<typeof Ionicons>['name']; 
-    color: string; 
-}) {
+function TabBarIcon(props) {
   return <Ionicons size={26} style={{ marginBottom: -3 }} {...props} />;
 }
 
@@ -33,6 +30,13 @@ export default function TabLayout() {
           title: 'Goals',
           headerShown: false, // Let the stack navigator inside 'goals' handle the header
           tabBarIcon: ({ color }) => <TabBarIcon name="list" color={color} />, // Goals icon
+        }}
+      />
+      <Tabs.Screen
+        name="tasks"
+        options={{
+          title: 'Tasks',
+          tabBarIcon: ({ color }) => <TabBarIcon name="checkmark-done" color={color} />,
         }}
       />
       <Tabs.Screen

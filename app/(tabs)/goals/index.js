@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // Use useFocusEffect from expo-router instead of react-navigation/native
-import { useFocusEffect, useRouter } from 'expo-router'; 
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as Progress from 'react-native-progress'; // Import progress bar
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Removed navigation prop, use useRouter hook instead
 const GoalsScreen = () => { 
@@ -116,18 +117,24 @@ const GoalsScreen = () => {
     >
       <Text style={styles.goalName}>{item.name}</Text>
       <Text style={styles.goalDates}>{`${item.startDate} - ${item.endDate}`}</Text>
-      {/* Progress Bar */}
-      <View style={styles.progressBarContainer}>
+      
+      {/* Progress Bar Section */}
+      <View style={styles.progressBarSection}>
         <Progress.Bar
-          progress={item.progress}
+          progress={item.progress || 0}
           width={null}
-          color="#4CAF50"
+          color="#27ae60" // Vibrant green
           unfilledColor="#e0e0e0"
           borderWidth={0}
-          height={8}
-          borderRadius={4}
+          height={14}
+          borderRadius={8}
+          style={{ flex: 1 }}
+          animated={true}
         />
-        <Text style={styles.progressText}>{`${Math.round(item.progress * 100)}%`}</Text>
+        <View style={styles.progressPercentContainer}>
+          <Text style={styles.progressPercentText}>{`${Math.round((item.progress || 0) * 100)}%`}</Text>
+          <MaterialCommunityIcons name="trophy" size={20} color="#FFD700" style={styles.trophyIcon} />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -197,16 +204,26 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 10, // Add space before progress bar
   },
-  progressBarContainer: {
-    marginTop: 8, // Space between dates and progress bar
+  progressBarSection: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-   progressText: {
-    fontSize: 12,
+  progressPercentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+    minWidth: 60,
+  },
+  progressPercentText: {
+    fontSize: 14,
+    fontWeight: 'bold',
     color: '#333',
-    marginLeft: 8, // Space between bar and text
-    fontWeight: '500',
+    marginRight: 4,
+  },
+  trophyIcon: {
+    marginLeft: 2,
   },
   addButton: {
     backgroundColor: '#f4511e',
