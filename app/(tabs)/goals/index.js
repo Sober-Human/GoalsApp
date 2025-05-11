@@ -98,15 +98,17 @@ const GoalsScreen = () => {
   // Helper function to calculate progress for a single goal
   const calculateGoalProgress = (goal) => {
     if (!goal || !goal.weeks) return 0;
-    let totalTasks = 0;
-    let completedTasks = 0;
-    Object.values(goal.weeks).forEach(week => {
-        if (week.tasks && Array.isArray(week.tasks)) {
-            totalTasks += week.tasks.length;
-            completedTasks += week.tasks.filter(task => task.completed).length;
+    const weekValues = Object.values(goal.weeks);
+    if (weekValues.length === 0) return 0;
+    
+    let completedWeeks = 0;
+    weekValues.forEach(week => {
+        if (week.tasks && Array.isArray(week.tasks) && week.tasks.length > 0) {
+            const allCompleted = week.tasks.every(task => task.completed);
+            if (allCompleted) completedWeeks += 1;
         }
     });
-    return totalTasks === 0 ? 0 : completedTasks / totalTasks;
+    return weekValues.length === 0 ? 0 : completedWeeks / weekValues.length;
   };
 
   const renderGoalItem = ({ item }) => (

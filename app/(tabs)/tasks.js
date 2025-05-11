@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, Animated, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Alert, Animated, ScrollView, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Entypo } from '@expo/vector-icons';
 import * as Progress from 'react-native-progress';
 
 const TASKS_KEY = '@dailyTasks';
@@ -17,6 +17,16 @@ const TasksScreen = () => {
   const [congratsMessage, setCongratsMessage] = useState('');
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  
+  // State for task menu
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  
+  // State for edit modal
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editTaskName, setEditTaskName] = useState('');
+  const [editTaskDuration, setEditTaskDuration] = useState(1);
+  const [editDurationPickerVisible, setEditDurationPickerVisible] = useState(false);
 
   useEffect(() => {
     loadTasks();
@@ -124,6 +134,63 @@ const TasksScreen = () => {
     ]);
   };
 
+  // Move task up in the list
+  const moveTaskUp = (id) => {
+    const taskIndex = tasks.findIndex(t => t.id === id);
+    if (taskIndex <= 0) return; // Already at the top
+    
+    const updated = [...tasks];
+    const temp = updated[taskIndex];
+    updated[taskIndex] = updated[taskIndex - 1];
+    updated[taskIndex - 1] = temp;
+    
+    saveTasks(updated);
+  };
+
+  // Move task down in the list
+  const moveTaskDown = (id) => {
+    const taskIndex = tasks.findIndex(t => t.id === id);
+    if (taskIndex === -1 || taskIndex >= tasks.length - 1) return; // Already at the bottom
+    
+    const updated = [...tasks];
+    const temp = updated[taskIndex];
+    updated[taskIndex] = updated[taskIndex + 1];
+    updated[taskIndex + 1] = temp;
+    
+    saveTasks(updated);
+  };
+
+  // Edit task
+  const startEditTask = (id) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    
+    setEditTaskName(task.name);
+    setEditTaskDuration(task.duration);
+    setSelectedTaskId(id);
+    setEditModalVisible(true);
+  };
+
+  const saveTaskEdit = () => {
+    if (!editTaskName) {
+      Alert.alert('Error', 'Task name cannot be empty');
+      return;
+    }
+    
+    const updated = tasks.map(task => 
+      task.id === selectedTaskId ? { ...task, name: editTaskName, duration: editTaskDuration } : task
+    );
+    
+    saveTasks(updated);
+    setEditModalVisible(false);
+  };
+
+  // Show task menu
+  const showTaskMenu = (id) => {
+    setSelectedTaskId(id);
+    setMenuVisible(true);
+  };
+
   // Calculate total duration and completed duration
   const totalDuration = tasks.reduce((sum, task) => sum + task.duration, 0);
   const completedDuration = tasks.reduce((sum, task) => task.completed ? sum + task.duration : sum, 0);
@@ -215,7 +282,7 @@ const TasksScreen = () => {
       <FlatList
         data={tasks}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <View style={styles.taskItem}>
             <TouchableOpacity 
               style={styles.checkbox}
@@ -234,10 +301,10 @@ const TasksScreen = () => {
               <Text style={styles.taskDuration}>{item.duration} hr{item.duration > 1 ? 's' : ''}</Text>
             </View>
             <TouchableOpacity 
-              style={styles.deleteButton}
-              onPress={() => deleteTask(item.id)}
+              style={styles.menuButton}
+              onPress={() => showTaskMenu(item.id)}
             >
-              <Ionicons name="trash-outline" size={22} color="#e53935" />
+              <Entypo name="dots-three-vertical" size={20} color="#555" />
             </TouchableOpacity>
           </View>
         )}
@@ -249,6 +316,145 @@ const TasksScreen = () => {
         }
         style={styles.taskList}
       />
+
+      {/* Task Options Menu Modal */}
+      <Modal
+        transparent={true}
+        visible={menuVisible}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
+            {selectedTaskId && (
+              <>
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => {
+                    moveTaskUp(selectedTaskId);
+                    setMenuVisible(false);
+                  }}
+                >
+                  <Ionicons name="arrow-up" size={20} color="#444" />
+                  <Text style={styles.menuItemText}>Move Up</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => {
+                    moveTaskDown(selectedTaskId);
+                    setMenuVisible(false);
+                  }}
+                >
+                  <Ionicons name="arrow-down" size={20} color="#444" />
+                  <Text style={styles.menuItemText}>Move Down</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => {
+                    startEditTask(selectedTaskId);
+                    setMenuVisible(false);
+                  }}
+                >
+                  <Ionicons name="pencil" size={20} color="#444" />
+                  <Text style={styles.menuItemText}>Edit</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.menuItem, styles.deleteMenuItem]}
+                  onPress={() => {
+                    deleteTask(selectedTaskId);
+                    setMenuVisible(false);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#e53935" />
+                  <Text style={styles.deleteMenuItemText}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Edit Task Modal */}
+      <Modal
+        transparent={true}
+        visible={editModalVisible}
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.editModalOverlay}>
+          <View style={styles.editModalContent}>
+            <Text style={styles.editModalTitle}>Edit Task</Text>
+            
+            <TextInput
+              style={styles.editInput}
+              placeholder="Task name"
+              value={editTaskName}
+              onChangeText={setEditTaskName}
+              autoFocus
+            />
+            
+            <TouchableOpacity 
+              style={styles.editDurationButton}
+              onPress={() => setEditDurationPickerVisible(!editDurationPickerVisible)}
+            >
+              <Text style={styles.durationButtonText}>
+                {editTaskDuration} hr{editTaskDuration > 1 ? 's' : ''}
+              </Text>
+              <MaterialIcons name="arrow-drop-down" size={24} color="#555" />
+            </TouchableOpacity>
+            
+            {editDurationPickerVisible && (
+              <View style={styles.editDurationPickerContainer}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.durationPicker}
+                >
+                  {DURATIONS.map((value) => (
+                    <TouchableOpacity 
+                      key={value} 
+                      style={[styles.durationOption, editTaskDuration === value && styles.durationOptionSelected]}
+                      onPress={() => {
+                        setEditTaskDuration(value);
+                        setEditDurationPickerVisible(false);
+                      }}
+                    >
+                      <Text 
+                        style={[styles.durationOptionText, editTaskDuration === value && styles.durationOptionTextSelected]}
+                      >
+                        {value} hr{value > 1 ? 's' : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
+            <View style={styles.editModalButtons}>
+              <TouchableOpacity 
+                style={[styles.editModalButton, styles.cancelEditButton]}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.cancelEditButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.editModalButton, styles.saveEditButton]}
+                onPress={saveTaskEdit}
+              >
+                <Text style={styles.saveEditButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -287,7 +493,7 @@ const styles = StyleSheet.create({
   taskName: { fontSize: 16, color: '#333', marginBottom: 4 },
   taskDuration: { fontSize: 14, color: '#666' },
   completedText: { textDecorationLine: 'line-through', color: '#999' },
-  deleteButton: { padding: 8 },
+  menuButton: { padding: 8 },
   
   // Empty state
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 },
@@ -295,7 +501,29 @@ const styles = StyleSheet.create({
   
   // Congratulations message
   congratsContainer: { position: 'absolute', top: '10%', left: 0, right: 0, zIndex: 999, alignItems: 'center', justifyContent: 'center' },
-  congratsText: { fontSize: 20, fontWeight: 'bold', color: '#f4511e', backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, elevation: 4 }
+  congratsText: { fontSize: 20, fontWeight: 'bold', color: '#f4511e', backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, elevation: 4 },
+  
+  // Menu modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  menuContainer: { width: '70%', backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  menuItemText: { fontSize: 16, color: '#444', marginLeft: 16 },
+  deleteMenuItem: { borderBottomWidth: 0 },
+  deleteMenuItemText: { fontSize: 16, color: '#e53935', marginLeft: 16 },
+  
+  // Edit modal
+  editModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  editModalContent: { width: '85%', backgroundColor: 'white', borderRadius: 12, padding: 20, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  editModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 20, textAlign: 'center' },
+  editInput: { width: '100%', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 16, backgroundColor: '#fff', fontSize: 16 },
+  editDurationButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 16 },
+  editDurationPickerContainer: { marginBottom: 16, backgroundColor: '#fff', borderRadius: 8, padding: 8, borderWidth: 1, borderColor: '#eee' },
+  editModalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+  editModalButton: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  cancelEditButton: { backgroundColor: '#f0f0f0', marginRight: 8 },
+  saveEditButton: { backgroundColor: '#f4511e', marginLeft: 8 },
+  cancelEditButtonText: { fontSize: 16, color: '#555', fontWeight: '500' },
+  saveEditButtonText: { fontSize: 16, color: 'white', fontWeight: '500' }
 });
 
 export default TasksScreen;

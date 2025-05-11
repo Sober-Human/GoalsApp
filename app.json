@@ -14,10 +14,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/OIP.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.uac.NewGoalsApp"
+      "package": "com.uac.Goals"
     },
     "web": {
       "bundler": "metro",
